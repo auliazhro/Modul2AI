@@ -45,6 +45,8 @@
         <button id="clearChatBtn" type="button" onclick="clearPublicChatHistory()" class="hidden text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl transition cursor-pointer">
           + Chat Baru
         </button>
+        <span id="currentUserBadge" class="hidden max-w-[160px] truncate text-[11px] font-medium text-zinc-600 bg-zinc-100 px-2.5 py-1.5 rounded-lg"></span>
+        <button id="userLogoutBtn" type="button" class="hidden text-xs font-medium text-zinc-500 hover:text-red-600 px-2 py-1.5 rounded-lg hover:bg-red-50 transition cursor-pointer">Keluar</button>
         <a href="/admin" class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white shadow-xs transition">
           <svg class="w-3.5 h-3.5 text-zinc-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -55,8 +57,30 @@
     </div>
   </header>
 
+  <section id="userLoginGate" class="flex-1 flex items-center justify-center p-4 sm:p-6">
+    <div class="w-full max-w-md bg-white border border-zinc-200/80 rounded-2xl p-6 sm:p-7 shadow-xl shadow-zinc-200/30">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white flex items-center justify-center shadow-sm shadow-indigo-500/25 mb-4">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+      </div>
+      <h1 class="text-lg font-semibold tracking-tight text-zinc-900">Masuk ke Chatbot</h1>
+      <p class="text-xs text-zinc-500 mt-1 mb-5">Masuk menggunakan akun yang diberikan admin. Akses dokumen mengikuti role akun Anda.</p>
+      <div id="userLoginError" class="hidden mb-4 text-xs bg-red-50 text-red-700 border border-red-200 rounded-xl p-3" role="alert"></div>
+      <form id="userLoginForm" class="space-y-3.5">
+        <div>
+          <label for="userLoginUsername" class="block text-xs font-medium text-zinc-700 mb-1.5">Username</label>
+          <input id="userLoginUsername" type="text" autocomplete="username" required class="w-full border border-zinc-200 rounded-xl px-3.5 py-2.5 text-sm bg-zinc-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition" />
+        </div>
+        <div>
+          <label for="userLoginPassword" class="block text-xs font-medium text-zinc-700 mb-1.5">Password</label>
+          <input id="userLoginPassword" type="password" autocomplete="current-password" required class="w-full border border-zinc-200 rounded-xl px-3.5 py-2.5 text-sm bg-zinc-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition" />
+        </div>
+        <button id="userLoginSubmit" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-sm font-medium py-2.5 rounded-xl shadow-xs transition cursor-pointer">Masuk</button>
+      </form>
+    </div>
+  </section>
+
   <!-- Main Chat Area -->
-  <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 flex flex-col">
+  <main id="chatApp" class="hidden flex flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 flex-col">
     <div id="chatBox" class="flex-1 space-y-5 overflow-y-auto pb-6">
       <!-- Hero Welcome Card -->
       <div id="welcomeState" class="bg-white border border-zinc-200/80 rounded-2xl p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
@@ -146,15 +170,102 @@
   </div>
 
   <script>
-    const PUBLIC_CHAT_KEY = "public_chat_history";
+    let PUBLIC_CHAT_KEY = "";
     const chatBox = document.getElementById("chatBox");
     const chatForm = document.getElementById("chatForm");
     const questionInput = document.getElementById("questionInput");
     const sendBtn = document.getElementById("sendBtn");
     const clearChatBtn = document.getElementById("clearChatBtn");
+    const userLoginForm = document.getElementById("userLoginForm");
+    const userLoginError = document.getElementById("userLoginError");
+    const userLoginSubmit = document.getElementById("userLoginSubmit");
+    const userLoginGate = document.getElementById("userLoginGate");
+    const chatApp = document.getElementById("chatApp");
+    const currentUserBadge = document.getElementById("currentUserBadge");
+    const userLogoutBtn = document.getElementById("userLogoutBtn");
     const welcomeHtml = document.getElementById("welcomeState").outerHTML;
+    let currentUser = null;
+
+    function getUserToken() {
+      return localStorage.getItem("user_token") || "";
+    }
+
+    function showLoginGate() {
+      userLoginGate.classList.remove("hidden");
+      chatApp.classList.add("hidden");
+      currentUserBadge.classList.add("hidden");
+      userLogoutBtn.classList.add("hidden");
+      clearChatBtn.classList.add("hidden");
+    }
+
+    function activateChatSession(user, accessibleDocumentIds = []) {
+      currentUser = user;
+      const accessScope = accessibleDocumentIds.length ? accessibleDocumentIds.join("-") : "none";
+      PUBLIC_CHAT_KEY = `chat_history_${user.user_id}_${accessScope}`;
+      currentUserBadge.textContent = `${user.username} · ${user.role_name}`;
+      currentUserBadge.classList.remove("hidden");
+      userLogoutBtn.classList.remove("hidden");
+      userLoginGate.classList.add("hidden");
+      chatApp.classList.remove("hidden");
+      restoreUserChatHistory();
+    }
+
+    async function checkUserSession() {
+      const token = getUserToken();
+      if (!token) {
+        showLoginGate();
+        return;
+      }
+      try {
+        const res = await fetch("/api/auth/user-me", { headers: { Authorization: `Bearer ${token}` } });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Sesi tidak valid.");
+        activateChatSession(data.user, data.accessible_document_ids || []);
+      } catch {
+        localStorage.removeItem("user_token");
+        showLoginGate();
+      }
+    }
+
+    userLoginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      userLoginError.classList.add("hidden");
+      userLoginSubmit.disabled = true;
+      userLoginSubmit.textContent = "Memverifikasi...";
+      try {
+        const res = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: document.getElementById("userLoginUsername").value.trim(),
+            password: document.getElementById("userLoginPassword").value,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.principal_type !== "user") {
+          throw new Error(data.detail || "Gunakan akun pengguna yang diberikan admin.");
+        }
+        localStorage.setItem("user_token", data.token);
+        await checkUserSession();
+      } catch (err) {
+        userLoginError.textContent = err.message || "Login gagal.";
+        userLoginError.classList.remove("hidden");
+      } finally {
+        userLoginSubmit.disabled = false;
+        userLoginSubmit.textContent = "Masuk";
+      }
+    });
+
+    userLogoutBtn.addEventListener("click", () => {
+      localStorage.removeItem("user_token");
+      currentUser = null;
+      PUBLIC_CHAT_KEY = "";
+      chatBox.innerHTML = welcomeHtml;
+      showLoginGate();
+    });
 
     function getPublicHistory() {
+      if (!PUBLIC_CHAT_KEY) return [];
       try {
         return JSON.parse(localStorage.getItem(PUBLIC_CHAT_KEY) || "[]");
       } catch {
@@ -163,12 +274,14 @@
     }
 
     function savePublicHistory(items) {
+      if (!PUBLIC_CHAT_KEY) return;
       localStorage.setItem(PUBLIC_CHAT_KEY, JSON.stringify(items));
       if (items.length > 0) clearChatBtn.classList.remove("hidden");
       else clearChatBtn.classList.add("hidden");
     }
 
     window.clearPublicChatHistory = function () {
+      if (!PUBLIC_CHAT_KEY) return;
       localStorage.removeItem(PUBLIC_CHAT_KEY);
       clearChatBtn.classList.add("hidden");
       chatBox.innerHTML = welcomeHtml;
@@ -438,8 +551,11 @@
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, role: "mahasiswa" }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getUserToken()}`,
+          },
+          body: JSON.stringify({ question }),
         });
         const data = await res.json();
         removeLoading();
@@ -478,7 +594,9 @@
       modal.classList.remove("hidden");
 
       try {
-        const res = await fetch(`/api/public/documents/${docId}`);
+        const res = await fetch(`/api/documents/${docId}/source`, {
+          headers: { Authorization: `Bearer ${getUserToken()}` },
+        });
         const data = await res.json();
         if (!res.ok) {
           bodyEl.innerHTML = `<div class="text-xs text-red-600 py-8 text-center">${escapeHtml(data.detail || "Dokumen tidak ditemukan.")}</div>`;
@@ -488,7 +606,24 @@
         const content = data.content || "";
         titleEl.textContent = doc.title;
         metaEl.textContent = `Dokumen ${doc.file_type.toUpperCase()}`;
-        dlEl.href = data.url;
+        dlEl.href = "#";
+        dlEl.onclick = async (event) => {
+          event.preventDefault();
+          try {
+            const fileRes = await fetch(data.file_url || data.url, {
+              headers: { Authorization: `Bearer ${getUserToken()}` },
+            });
+            if (!fileRes.ok) throw new Error("File sumber tidak dapat diakses.");
+            const blobUrl = URL.createObjectURL(await fileRes.blob());
+            const link = document.createElement("a");
+            link.href = blobUrl;
+            link.download = doc.filename;
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+          } catch (err) {
+            bodyEl.innerHTML = `<div class="text-xs text-red-600 py-4">${escapeHtml(err.message || "Unduhan gagal.")}</div>`;
+          }
+        };
         dlEl.classList.remove("hidden");
 
         bodyEl.innerHTML = !content.trim()
@@ -511,7 +646,8 @@
       if (e.key === "Escape") closeSourceModal();
     });
 
-    (function restorePublicChat() {
+    function restoreUserChatHistory() {
+      chatBox.innerHTML = welcomeHtml;
       const history = getPublicHistory();
       if (history.length > 0) {
         clearChatBtn.classList.remove("hidden");
@@ -520,7 +656,9 @@
           else appendBotMessage(item.text, item.sources || []);
         });
       }
-    })();
+    }
+
+    checkUserSession();
   </script>
 </body>
 </html>

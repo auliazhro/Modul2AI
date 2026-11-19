@@ -235,7 +235,7 @@ def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> list[str
 
 def search_chunks_by_role(
     question: str,
-    role_name: str,
+    role_id: int | None,
     top_k: int = 4,
     min_score: float = 0.16,
 ) -> list[dict[str, Any]]:
@@ -257,10 +257,9 @@ def search_chunks_by_role(
         FROM document_chunks dc
         JOIN documents d ON d.id = dc.document_id
         JOIN document_roles dr ON dr.document_id = d.id
-        JOIN roles r ON r.id = dr.role_id
-        WHERE LOWER(r.name) = LOWER(?) AND d.is_active = 1
+        WHERE d.is_active = 1 AND (? IS NULL OR dr.role_id = ?)
         """,
-        (role_name.strip(),),
+        (role_id, role_id),
     )
     rows = cur.fetchall()
     conn.close()
@@ -303,7 +302,7 @@ def get_unique_sources(chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "document_id": doc_id,
                 "title": ch["document_title"],
                 "filename": ch["document_filename"],
-                "url": f"/uploads/{ch['document_filename']}",
+                "url": f"/api/documents/{doc_id}/source",
                 "score": ch["score"],
             }
     return list(seen.values())

@@ -148,6 +148,30 @@
     </div>
   </div>
 
+  <!-- Modal Pengaturan Hak Akses Dokumen -->
+  <div id="accessModal" class="hidden fixed inset-0 z-50 bg-zinc-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white border border-zinc-200 rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden">
+      <div class="px-5 py-4 border-b border-zinc-100 flex items-center justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold text-zinc-900">Hak Akses Dokumen</h3>
+          <p id="accessDocTitle" class="text-xs text-zinc-500 mt-0.5 truncate"></p>
+        </div>
+        <button type="button" onclick="closeAccessModal()" class="text-zinc-400 hover:text-zinc-700 p-1.5 rounded-lg hover:bg-zinc-100 transition cursor-pointer" aria-label="Tutup">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto flex-1">
+        <p class="text-xs text-zinc-500 mb-3">Pilih satu atau lebih role. Perubahan akan disimpan ke SQLite.</p>
+        <div id="accessRoleList" class="space-y-2"></div>
+        <div id="accessMsg" class="hidden mt-4 text-xs rounded-xl p-3" role="status" aria-live="polite"></div>
+      </div>
+      <div class="px-5 py-3 border-t border-zinc-100 bg-white flex justify-end gap-2">
+        <button type="button" onclick="closeAccessModal()" class="text-xs font-medium text-zinc-700 bg-zinc-100 hover:bg-zinc-200 px-4 py-2 rounded-xl transition cursor-pointer">Batal</button>
+        <button type="button" id="saveAccessBtn" onclick="saveDocumentRoles()" class="text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 px-4 py-2 rounded-xl transition cursor-pointer">Simpan Akses</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Login Section -->
   <section id="loginSection" class="min-h-screen bg-grid flex items-center justify-center p-4">
     <div class="bg-white border border-zinc-200/80 rounded-2xl shadow-xl shadow-zinc-200/40 w-full max-w-sm p-7">
@@ -207,12 +231,18 @@
 
       <nav class="p-3 space-y-1 flex-1">
         <div class="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Workspace</div>
-        <a href="#knowledge" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium bg-indigo-50/80 text-indigo-700">
+        <button id="navKnowledge" type="button" onclick="showAdminPanel('knowledge')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium bg-indigo-50/80 text-indigo-700 text-left transition cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
           Knowledge Base
-        </a>
+        </button>
+        <button id="navRoles" type="button" onclick="showAdminPanel('roles')" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 transition cursor-pointer text-left">
+          <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2m16 0v-2a4 4 0 00-3-3.87M14 3.13a4 4 0 010 7.75M14 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          Manajemen Role
+        </button>
         <button type="button" onclick="openChatModal()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 transition cursor-pointer">
           <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -243,6 +273,7 @@
 
     <!-- Main Content -->
     <main class="flex-1 p-5 sm:p-8 max-w-6xl w-full space-y-6">
+      <div id="knowledgePanel" class="space-y-6">
       <div>
         <h1 class="text-xl font-semibold tracking-tight text-zinc-900">Knowledge Base</h1>
         <p class="text-xs text-zinc-500 mt-0.5">Unggah dan kelola dokumen referensi untuk Chatbot RAG.</p>
@@ -291,6 +322,14 @@
                 class="w-full border border-zinc-200 rounded-xl px-3.5 py-2 text-sm bg-zinc-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition" />
             </div>
 
+            <fieldset>
+              <legend class="block text-xs font-medium text-zinc-700 mb-1.5">Role yang boleh mengakses</legend>
+              <div id="uploadRoleList" class="max-h-44 overflow-y-auto border border-zinc-200 rounded-xl bg-zinc-50/50 p-3 space-y-2">
+                <p class="text-xs text-zinc-400">Memuat role...</p>
+              </div>
+              <p class="text-[11px] text-zinc-400 mt-1.5">Pilih minimal satu role. Tidak ada role yang dipilih otomatis.</p>
+            </fieldset>
+
             <!-- Custom Dropzone -->
             <div>
               <label class="block text-xs font-medium text-zinc-700 mb-1.5">File Dokumen (PDF, DOCX, TXT)</label>
@@ -315,6 +354,51 @@
           <div id="docList" class="divide-y divide-zinc-100"></div>
         </div>
       </div>
+      </div>
+
+      <section id="rolesPanel" class="hidden space-y-6">
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight text-zinc-900">Manajemen Role</h1>
+          <p class="text-xs text-zinc-500 mt-0.5">Atur role pengguna yang disimpan pada database aplikasi.</p>
+        </div>
+
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+          <div class="xl:col-span-4 bg-white border border-zinc-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+            <h2 class="text-sm font-semibold text-zinc-900">Tambah Role</h2>
+            <p class="text-xs text-zinc-500 mt-0.5 mb-4">Nama role disimpan ke SQLite setelah berhasil ditambahkan.</p>
+            <div id="roleMsg" class="hidden mb-4 text-xs rounded-xl p-3" role="status" aria-live="polite"></div>
+            <form id="roleForm" class="space-y-3.5">
+              <div>
+                <label for="roleName" class="block text-xs font-medium text-zinc-700 mb-1.5">Nama Role</label>
+                <input id="roleName" name="name" type="text" maxlength="50" placeholder="Contoh: dosen" required
+                  class="w-full border border-zinc-200 rounded-xl px-3.5 py-2.5 text-sm bg-zinc-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition" />
+                <p class="text-[11px] text-zinc-400 mt-1.5">Gunakan huruf, angka, tanda hubung, atau garis bawah.</p>
+              </div>
+              <div>
+                <label for="roleDescription" class="block text-xs font-medium text-zinc-700 mb-1.5">Deskripsi (opsional)</label>
+                <input id="roleDescription" name="description" type="text" maxlength="200" placeholder="Keterangan role"
+                  class="w-full border border-zinc-200 rounded-xl px-3.5 py-2.5 text-sm bg-zinc-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition" />
+              </div>
+              <button id="roleSubmitBtn" type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-medium px-5 py-2.5 rounded-xl shadow-xs transition cursor-pointer">
+                Tambah Role
+              </button>
+            </form>
+          </div>
+
+          <div class="xl:col-span-8 bg-white border border-zinc-200/80 rounded-2xl p-5 shadow-[0_1px_2px_rgba(0,0,0,0.03)] min-w-0">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <h2 class="text-sm font-semibold text-zinc-900">Role Tersedia</h2>
+                <p class="text-xs text-zinc-500 mt-0.5">Daftar dan jumlah pemakaian diambil langsung dari backend.</p>
+              </div>
+              <button type="button" onclick="loadRoles()" class="self-start sm:self-auto text-xs font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition cursor-pointer">Muat Ulang</button>
+            </div>
+            <div id="roleList" class="divide-y divide-zinc-100" aria-live="polite">
+              <div class="py-8 text-center text-xs text-zinc-400">Memuat role...</div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </section>
 
@@ -330,7 +414,12 @@
     const fileLabel = document.getElementById("fileLabel");
     const toast = document.getElementById("toast");
     const toastText = document.getElementById("toastText");
-    let defaultRoleIds = [];
+    const roleList = document.getElementById("roleList");
+    const roleMsg = document.getElementById("roleMsg");
+    const uploadRoleList = document.getElementById("uploadRoleList");
+    let availableRoles = [];
+    let currentDocuments = [];
+    let activeAccessDocumentId = null;
 
     docFileInput.addEventListener("change", () => {
       if (docFileInput.files && docFileInput.files[0]) {
@@ -539,6 +628,19 @@
       loadDocuments();
     }
 
+    window.showAdminPanel = function (panel) {
+      const showRoles = panel === "roles";
+      document.getElementById("knowledgePanel").classList.toggle("hidden", showRoles);
+      document.getElementById("rolesPanel").classList.toggle("hidden", !showRoles);
+      document.getElementById("navKnowledge").className = showRoles
+        ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 transition cursor-pointer text-left"
+        : "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium bg-indigo-50/80 text-indigo-700 text-left transition cursor-pointer";
+      document.getElementById("navRoles").className = showRoles
+        ? "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium bg-indigo-50/80 text-indigo-700 text-left transition cursor-pointer"
+        : "w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-zinc-600 hover:bg-zinc-100/80 hover:text-zinc-900 transition cursor-pointer text-left";
+      if (showRoles) loadRoles();
+    };
+
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       loginError.classList.add("hidden");
@@ -566,11 +668,163 @@
     });
 
     async function loadRolesForUpload() {
-      const res = await fetch("/api/roles");
-      const data = await res.json();
-      const roles = data.roles || [];
-      defaultRoleIds = roles.map((r) => r.id);
+      const selected = new Set(
+        Array.from(uploadRoleList.querySelectorAll("input[type='checkbox']:checked"), (el) => Number(el.value)),
+      );
+      try {
+        const res = await fetch("/api/roles", {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Gagal memuat role.");
+        availableRoles = data.roles || [];
+        uploadRoleList.innerHTML = availableRoles.length
+          ? availableRoles.map((role) => `
+              <label class="flex items-start gap-2.5 rounded-lg px-2 py-1.5 hover:bg-white cursor-pointer">
+                <input type="checkbox" name="uploadRole" value="${role.id}" ${selected.has(role.id) ? "checked" : ""}
+                  class="mt-0.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500" />
+                <span class="min-w-0">
+                  <span class="block text-xs font-medium text-zinc-800">${escapeHtml(role.name)}</span>
+                  <span class="block text-[11px] text-zinc-400 break-words">${escapeHtml(role.description || "")}</span>
+                </span>
+              </label>`).join("")
+          : `<p class="text-xs text-zinc-400">Belum ada role yang tersedia.</p>`;
+      } catch (err) {
+        availableRoles = [];
+        uploadRoleList.innerHTML = `<p class="text-xs text-red-600">${escapeHtml(err.message || "Gagal memuat role.")}</p>`;
+      }
     }
+
+    function showRoleMessage(message, isError = false) {
+      roleMsg.textContent = message;
+      roleMsg.className = isError
+        ? "mb-4 text-xs rounded-xl p-3 bg-red-50 text-red-700 border border-red-200"
+        : "mb-4 text-xs rounded-xl p-3 bg-emerald-50 text-emerald-700 border border-emerald-200";
+    }
+
+    async function loadRoles() {
+      roleList.innerHTML = `<div class="py-8 text-center text-xs text-zinc-400">Memuat role...</div>`;
+      try {
+        const res = await fetch("/api/roles", {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Gagal memuat daftar role.");
+        const roles = data.roles || [];
+        if (!roles.length) {
+          roleList.innerHTML = `<div class="py-10 text-center text-xs text-zinc-400">Belum ada role.</div>`;
+          return;
+        }
+        roleList.innerHTML = roles.map((role) => {
+          const locked = Boolean(role.is_system);
+          const badge = locked
+            ? `<span class="text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100">Role sistem</span>`
+            : "";
+          const userLabel = `${role.user_count || 0} pengguna`;
+          const docLabel = `${role.document_count || 0} dokumen`;
+          return `
+            <div class="py-3.5 first:pt-1 last:pb-1">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="flex items-center flex-wrap gap-2">
+                    <span class="text-sm font-semibold text-zinc-900 break-all">${escapeHtml(role.name)}</span>${badge}
+                  </div>
+                  <p class="text-xs text-zinc-500 mt-0.5 break-words">${escapeHtml(role.description || "Tanpa deskripsi")}</p>
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-zinc-400">
+                    <span>${userLabel}</span><span>${docLabel}</span>
+                    <button type="button" onclick="toggleRoleUsers(${role.id})" class="text-indigo-600 hover:text-indigo-800 font-medium">Lihat pengguna</button>
+                  </div>
+                </div>
+                <button type="button" ${locked ? "disabled" : ""} data-role-name="${escapeHtml(role.name)}" onclick="deleteRole(${role.id}, this.dataset.roleName)"
+                  class="self-start sm:self-auto text-xs font-medium px-3 py-2 rounded-lg transition ${locked ? "text-zinc-400 bg-zinc-100 cursor-not-allowed" : "text-red-600 hover:bg-red-50 cursor-pointer"}">
+                  ${locked ? "Dilindungi" : "Hapus Role"}
+                </button>
+              </div>
+              <div id="roleUsers-${role.id}" class="hidden mt-3 ml-0 sm:ml-2 rounded-xl bg-zinc-50 border border-zinc-100 px-3.5 py-3 text-xs text-zinc-500"></div>
+            </div>`;
+        }).join("");
+      } catch (err) {
+        roleList.innerHTML = `<div class="py-8 text-center text-xs text-red-600">${escapeHtml(err.message || "Gagal memuat daftar role.")}</div>`;
+      }
+    }
+
+    window.toggleRoleUsers = async function (roleId) {
+      const target = document.getElementById(`roleUsers-${roleId}`);
+      if (!target.classList.contains("hidden")) {
+        target.classList.add("hidden");
+        return;
+      }
+      target.textContent = "Memuat pengguna...";
+      target.classList.remove("hidden");
+      try {
+        const res = await fetch(`/api/roles/${roleId}/users`, {
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Gagal memuat pengguna.");
+        target.innerHTML = data.users.length
+          ? `<div class="space-y-1.5">${data.users.map((user) => `<div class="flex flex-wrap justify-between gap-x-3"><span class="font-medium text-zinc-700">${escapeHtml(user.username)}</span><span class="text-zinc-400">${escapeHtml(user.created_at || "")}</span></div>`).join("")}</div>`
+          : "Belum ada pengguna dengan role ini.";
+      } catch (err) {
+        target.textContent = err.message || "Gagal memuat pengguna.";
+      }
+    };
+
+    window.deleteRole = async function (roleId, roleName) {
+      if (!window.confirm(`Hapus role '${roleName}'?`)) return;
+      try {
+        const res = await fetch(`/api/roles/${roleId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${getToken()}` },
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showRoleMessage(data.detail || "Role tidak dapat dihapus.", true);
+          return;
+        }
+        roleMsg.classList.add("hidden");
+        showToast(data.message || "Role berhasil dihapus.");
+        await loadRoles();
+        await loadRolesForUpload();
+      } catch {
+        showRoleMessage("Gagal terhubung ke server.", true);
+      }
+    };
+
+    document.getElementById("roleForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      roleMsg.classList.add("hidden");
+      const btn = document.getElementById("roleSubmitBtn");
+      const name = document.getElementById("roleName").value.trim();
+      const description = document.getElementById("roleDescription").value.trim();
+      btn.disabled = true;
+      btn.textContent = "Menyimpan...";
+      try {
+        const res = await fetch("/api/roles", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ name, description }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showRoleMessage(data.detail || "Role gagal ditambahkan.", true);
+          return;
+        }
+        document.getElementById("roleForm").reset();
+        showRoleMessage(`Role '${data.role.name}' berhasil ditambahkan.`);
+        showToast("Role berhasil ditambahkan");
+        await loadRoles();
+        await loadRolesForUpload();
+      } catch {
+        showRoleMessage("Gagal terhubung ke server.", true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Tambah Role";
+      }
+    });
 
     async function loadDocuments() {
       const res = await fetch("/api/documents", {
@@ -578,6 +832,7 @@
       });
       const data = await res.json();
       const docs = data.documents || [];
+      currentDocuments = docs;
       document.getElementById("statDocs").textContent = docs.length;
       document.getElementById("statChunks").textContent = docs.reduce((acc, d) => acc + (d.total_chunks || 0), 0);
 
@@ -594,6 +849,9 @@
         : docs.map((d) => {
             const isActive = d.is_active !== 0;
             const fileBadge = `<span class="text-[11px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md font-medium">${escapeHtml(d.file_type.toUpperCase())}</span>`;
+            const accessBadges = (d.roles || []).length
+              ? d.roles.map((role) => `<span class="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-md font-medium">Akses: ${escapeHtml(role.name)}</span>`).join("")
+              : `<span class="text-[10px] bg-red-50 text-red-700 border border-red-100 px-2 py-0.5 rounded-md font-medium">Tanpa role akses</span>`;
             const statusBadge = isActive
               ? ""
               : `<span class="text-[11px] bg-amber-50 text-amber-700 border border-amber-200/80 px-2 py-0.5 rounded-md font-medium">Nonaktif</span>`;
@@ -608,12 +866,16 @@
                     ${escapeHtml(d.title)}
                   </button>
                   <div class="text-xs text-zinc-500 mt-0.5">${d.total_chunks} chunks</div>
-                  <div class="flex flex-wrap gap-1 mt-1.5">${fileBadge}${statusBadge}</div>
+                  <div class="flex flex-wrap gap-1 mt-1.5">${fileBadge}${statusBadge}${accessBadges}</div>
                 </div>
                 <div class="flex items-center gap-1.5 shrink-0">
                   <button type="button" onclick="viewChunks(${d.id})"
                     class="text-xs text-indigo-600 hover:bg-indigo-50 font-medium px-2.5 py-1.5 rounded-lg transition cursor-pointer">
                     Lihat Chunks
+                  </button>
+                  <button type="button" onclick="editDocumentRoles(${d.id})"
+                    class="text-xs text-violet-600 hover:bg-violet-50 font-medium px-2.5 py-1.5 rounded-lg transition cursor-pointer">
+                    Atur Akses
                   </button>
                   <button type="button" onclick="toggleDocument(${d.id})"
                     class="${toggleCls}">
@@ -629,18 +891,99 @@
           }).join("");
     }
 
+    window.editDocumentRoles = async function (docId) {
+      const doc = currentDocuments.find((item) => item.id === docId);
+      if (!doc) return;
+      activeAccessDocumentId = docId;
+      document.getElementById("accessDocTitle").textContent = doc.title;
+      document.getElementById("accessMsg").classList.add("hidden");
+      document.getElementById("accessRoleList").innerHTML = `<p class="text-xs text-zinc-400">Memuat role...</p>`;
+      document.getElementById("accessModal").classList.remove("hidden");
+      await loadRolesForUpload();
+      const assigned = new Set((doc.roles || []).map((role) => role.id));
+      document.getElementById("accessRoleList").innerHTML = availableRoles.length
+        ? availableRoles.map((role) => `
+            <label class="flex items-start gap-2.5 rounded-xl border border-zinc-200 px-3.5 py-3 hover:bg-zinc-50 cursor-pointer">
+              <input type="checkbox" name="accessRole" value="${role.id}" ${assigned.has(role.id) ? "checked" : ""}
+                class="mt-0.5 rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500" />
+              <span class="min-w-0">
+                <span class="block text-xs font-medium text-zinc-800">${escapeHtml(role.name)}</span>
+                <span class="block text-[11px] text-zinc-400 mt-0.5">${escapeHtml(role.description || "")}</span>
+              </span>
+            </label>`).join("")
+        : `<p class="text-xs text-zinc-400">Tidak ada role yang tersedia.</p>`;
+    };
+
+    window.closeAccessModal = function () {
+      document.getElementById("accessModal").classList.add("hidden");
+      activeAccessDocumentId = null;
+    };
+
+    window.saveDocumentRoles = async function () {
+      const selectedRoleIds = Array.from(
+        document.querySelectorAll("#accessRoleList input[name='accessRole']:checked"),
+        (el) => Number(el.value),
+      );
+      const msg = document.getElementById("accessMsg");
+      if (selectedRoleIds.length === 0) {
+        msg.textContent = "Pilih minimal satu role. Dokumen tanpa role tidak diberi akses otomatis.";
+        msg.className = "mt-4 text-xs rounded-xl p-3 bg-red-50 text-red-700 border border-red-200";
+        return;
+      }
+
+      const btn = document.getElementById("saveAccessBtn");
+      btn.disabled = true;
+      btn.textContent = "Menyimpan...";
+      try {
+        const res = await fetch(`/api/documents/${activeAccessDocumentId}/roles`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ role_ids: selectedRoleIds }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          msg.textContent = data.detail || "Hak akses gagal diperbarui.";
+          msg.className = "mt-4 text-xs rounded-xl p-3 bg-red-50 text-red-700 border border-red-200";
+          return;
+        }
+        closeAccessModal();
+        showToast(data.message || "Hak akses berhasil diperbarui.");
+        await loadDocuments();
+      } catch {
+        msg.textContent = "Gagal terhubung ke server.";
+        msg.className = "mt-4 text-xs rounded-xl p-3 bg-red-50 text-red-700 border border-red-200";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Simpan Akses";
+      }
+    };
+
     document.getElementById("uploadForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       uploadMsg.classList.add("hidden");
 
-      if (defaultRoleIds.length === 0) {
+      if (availableRoles.length === 0) {
         await loadRolesForUpload();
+      }
+
+      const selectedRoleIds = Array.from(
+        uploadRoleList.querySelectorAll("input[name='uploadRole']:checked"),
+        (el) => Number(el.value),
+      );
+      if (selectedRoleIds.length === 0) {
+        uploadMsg.className = "mb-4 text-xs rounded-xl p-3 bg-red-50 text-red-700 border border-red-200";
+        uploadMsg.textContent = "Pilih minimal satu role yang boleh mengakses dokumen ini.";
+        uploadMsg.classList.remove("hidden");
+        return;
       }
 
       const formData = new FormData();
       formData.append("file", docFileInput.files[0]);
       formData.append("title", document.getElementById("docTitle").value.trim());
-      formData.append("role_ids", JSON.stringify(defaultRoleIds));
+      formData.append("role_ids", JSON.stringify(selectedRoleIds));
 
       const btn = document.getElementById("uploadBtn");
       btn.disabled = true;
@@ -983,8 +1326,11 @@
       try {
         const res = await fetch("/api/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, role: "mahasiswa" }),
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({ question }),
         });
         const data = await res.json();
         loadingEl.remove();

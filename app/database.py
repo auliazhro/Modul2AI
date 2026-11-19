@@ -22,13 +22,15 @@ def init_db() -> None:
 
     conn = get_connection()
     cur = conn.cursor()
+    now = datetime.now(timezone.utc).isoformat()
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS roles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT UNIQUE NOT NULL,
             description TEXT DEFAULT '',
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            is_system INTEGER NOT NULL DEFAULT 0 CHECK (is_system IN (0, 1))
         );
     """)
 
@@ -64,8 +66,61 @@ def init_db() -> None:
             role_id INTEGER NOT NULL,
             PRIMARY KEY (document_id, role_id),
             FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
-            FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+            FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
         );
+    """)
+
+    # Akun non-admin terikat tepat pada satu role. Admin yang sudah ada tetap
+    # disimpan di tabel admins dan tetap memakai mekanisme JWT yang sekarang.
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            role_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+        );
+    """)
+
+    cur.execute("PRAGMA table_info(roles)")
+    role_cols = {row["name"] for row in cur.fetchall()}
+    if "is_system" not in role_cols:
+        cur.execute("ALTER TABLE roles ADD COLUMN is_system INTEGER NOT NULL DEFAULT 0 CHECK (is_system IN (0, 1))")
+
+    cur.execute("PRAGMA foreign_keys = OFF")
+    cur.execute("PRAGMA foreign_key_list(document_roles)")
+    role_fks = cur.fetchall()
+    fk_actions = {row["table"]: row["on_delete"].upper() for row in role_fks}
+    if fk_actions != {"documents": "CASCADE", "roles": "RESTRICT"}:
+        cur.execute("BEGIN")
+        cur.execute("""
+            CREATE TABLE document_roles_migrating (
+                document_id INTEGER NOT NULL,
+                role_id INTEGER NOT NULL,
+                PRIMARY KEY (document_id, role_id),
+                FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
+                FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE RESTRICT
+            )
+        """)
+        cur.execute("INSERT INTO document_roles_migrating (document_id, role_id) SELECT document_id, role_id FROM document_roles")
+        cur.execute("DROP TABLE document_roles")
+        cur.execute("ALTER TABLE document_roles_migrating RENAME TO document_roles")
+        cur.execute("COMMIT")
+    cur.execute("PRAGMA foreign_keys = ON")
+
+    cur.execute(
+        "INSERT OR IGNORE INTO roles (name, description, created_at, is_system) VALUES (?, ?, ?, 1)",
+        ("admin", "Role administratif sistem", now),
+    )
+    cur.execute("UPDATE roles SET is_system = 1 WHERE name = 'admin'")
+    cur.execute("""
+        CREATE TRIGGER IF NOT EXISTS prevent_system_role_delete
+        BEFORE DELETE ON roles
+        WHEN OLD.is_system = 1
+        BEGIN
+            SELECT RAISE(ABORT, 'Role sistem tidak dapat dihapus');
+        END
     """)
 
     cur.execute("""
@@ -96,8 +151,6 @@ def init_db() -> None:
             created_at TEXT NOT NULL
         );
     """)
-
-    now = datetime.now(timezone.utc).isoformat()
 
     default_roles = [
         ("mahasiswa", "Akses informasi akademik & layanan SSC untuk mahasiswa"),
